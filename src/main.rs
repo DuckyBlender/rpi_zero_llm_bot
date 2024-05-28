@@ -30,6 +30,14 @@ async fn main() {
 
     let bot = Bot::from_env();
 
+    // Get the bot commands
+    bot.set_my_commands(Command::bot_commands()).await.unwrap();
+
+    info!(
+        "{} has started!",
+        bot.get_me().send().await.unwrap().user.username.unwrap()
+    );
+
     Command::repl(bot, answer).await;
 }
 
