@@ -120,6 +120,7 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
                 Err(e) => {
                     error!("Error sending request: {}", e);
                     bot.send_message(msg.chat.id, "An error occurred while sending the request.")
+                        .reply_to_message_id(msg.id)
                         .await?;
                     return Ok(());
                 }
@@ -132,6 +133,7 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
                 Err(e) => {
                     error!("Error reading response: {}", e);
                     bot.send_message(msg.chat.id, "An error occurred while reading the response.")
+                        .reply_to_message_id(msg.id)
                         .await?;
                     return Ok(());
                 }
@@ -142,6 +144,7 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
                 Err(e) => {
                     error!("Error parsing response: {}", e);
                     bot.send_message(msg.chat.id, "An error occurred while parsing the response.")
+                        .reply_to_message_id(msg.id)
                         .await?;
                     return Ok(());
                 }
@@ -152,6 +155,7 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
                 None => {
                     error!("Error parsing response: {:?}", parsed_response);
                     bot.send_message(msg.chat.id, "An error occurred while parsing the response.")
+                        .reply_to_message_id(msg.id)
                         .await?;
                     return Ok(());
                 }
@@ -173,6 +177,7 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
                         msg.chat.id,
                         "An error occurred while sending the health check request.",
                     )
+                    .reply_to_message_id(msg.id)
                     .await?;
                     return Ok(());
                 }
@@ -190,6 +195,7 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
                         msg.chat.id,
                         "An error occurred while reading the health check response.",
                     )
+                    .reply_to_message_id(msg.id)
                     .await?;
                     return Ok(());
                 }
