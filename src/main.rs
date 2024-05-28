@@ -1,3 +1,8 @@
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+
 use dotenv::dotenv;
 use log::{error, info};
 use reqwest::{
@@ -31,7 +36,7 @@ async fn main() {
 #[derive(BotCommands, Clone)]
 #[command(
     rename_rule = "lowercase",
-    description = "These commands are supported:"
+    description = "This bot is 100% hosted on a 512MB Raspberry Pi Zero 2 W. Expect low performance and low quality.\n\nThese commands are supported:"
 )]
 enum Command {
     #[command(description = "LLM request")]
@@ -46,6 +51,7 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
     match cmd {
         Command::Help => {
             bot.send_message(msg.chat.id, Command::descriptions().to_string())
+                .reply_to_message_id(msg.id)
                 .await?
         }
         Command::Qwen(prompt) => {
@@ -55,11 +61,11 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
             // Create headers
             let mut headers = HeaderMap::new();
             headers.insert(CONTENT_TYPE, "application/json".parse().unwrap());
-            headers.insert(AUTHORIZATION, "Bearer no-key".parse().unwrap());
+            headers.insert(AUTHORIZATION, "Bearer amogus".parse().unwrap());
 
             // Create the body
             let body = json!({
-                "model": "gpt-3.5-turbo", // model doesn't matter, llama.cpp uses qwen 0.5b under the hood
+                "model": "amogus", // model doesn't matter, llama.cpp uses qwen 0.5b under the hood
                 "messages": [
                     {
                         "role": "user",
@@ -70,9 +76,36 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
             });
 
             // Send the request
-            info!("Sending request to {}", url);
             let client = reqwest::Client::new();
+
+            // Before we send the request, send the typing indicator every 5 seconds in a different thread
+            let flag = Arc::new(AtomicBool::new(false));
+            let flag_clone = Arc::clone(&flag);
+
+            let bot_clone = bot.clone();
+            let msg_clone = msg.clone();
+            tokio::spawn(async move {
+                loop {
+                    if flag_clone.load(Ordering::Relaxed) {
+                        info!("Stopping typing indicator");
+                        break;
+                    }
+                    info!("Sending typing indicator...");
+                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    bot_clone
+                        .send_chat_action(msg_clone.chat.id, teloxide::types::ChatAction::Typing)
+                        .await
+                        .unwrap();
+                }
+            });
+
+            info!("Sending request to {}", url);
+            let now = std::time::Instant::now();
             let res = client.post(&url).headers(headers).json(&body).send().await;
+            info!("Request took {}ms", now.elapsed().as_millis());
+            // Stop the typing indicator
+            flag.store(true, Ordering::Relaxed);
+            // There is probably a better way to do this but this works for now
 
             let res = match res {
                 Ok(res) => res,
@@ -106,9 +139,6 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
                 }
             };
 
-            // Now you can access the fields in the parsed_response
-            println!("Response ID: {}", parsed_response["id"]);
-
             let response = match parsed_response["choices"][0]["message"]["content"].as_str() {
                 Some(response) => response,
                 None => {
@@ -119,6 +149,7 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
                 }
             };
 
+            info!("Response: {}", response);
             bot.send_message(msg.chat.id, response)
                 .reply_to_message_id(msg.id)
                 .await?
