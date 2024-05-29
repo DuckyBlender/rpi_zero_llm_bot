@@ -4,7 +4,7 @@ use std::sync::{
 };
 
 use dotenv::dotenv;
-use log::{error, info};
+use log::{debug, error, info};
 use reqwest::{
     header::{HeaderMap, AUTHORIZATION, CONTENT_TYPE},
     StatusCode,
@@ -81,13 +81,15 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
                     }
                 ],
                 "temperature": 0.4, // low temperature because this model is so small any variation will probably be bad
+                "max_tokens": 256, // sometimes the model generates infinite tokens
+                "frequency_penalty": 1.1, // sometimes the model repeats itself
             });
 
             // Send the request
             let client = reqwest::Client::new();
 
             // Before we send the request, send the typing indicator every 5 seconds in a different thread
-            let flag = Arc::new(AtomicBool::new(false));
+            let flag = Arc::new(AtomicBool::new(false)); // this is for stopping the typing indicator. we do it this way because it's in a different thread and we need thread safety.
             let flag_clone = Arc::clone(&flag);
 
             let bot_clone = bot.clone();
@@ -98,7 +100,7 @@ async fn answer(bot: Bot, msg: Message, cmd: Command) -> ResponseResult<()> {
                         info!("Stopping typing indicator");
                         break;
                     }
-                    info!("Sending typing indicator...");
+                    debug!("Sending typing indicator...");
                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                     bot_clone
                         .send_chat_action(msg_clone.chat.id, teloxide::types::ChatAction::Typing)

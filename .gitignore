@@ -1,3 +1,5 @@
 /target
 .env
 Cargo.lock
+arm_script.sh
+rpi_zero_llm_bot
